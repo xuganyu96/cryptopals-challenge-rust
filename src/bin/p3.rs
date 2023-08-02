@@ -52,14 +52,13 @@ impl EnglishFrequency {
 
 fn count_letters(bytes: &[u8]) -> Option<[usize; 26]> {
     let mut counts = [0usize; 26];
-    bytes.iter()
-        .for_each(|byte| {
-            if (65..=90).contains(byte) {
-                counts[usize::from(byte - 65)] += 1;
-            } else if (97..=122).contains(byte) {
-                counts[usize::from(byte - 97)] += 1;
-            }
-        });
+    bytes.iter().for_each(|byte| {
+        if (65..=90).contains(byte) {
+            counts[usize::from(byte - 65)] += 1;
+        } else if (97..=122).contains(byte) {
+            counts[usize::from(byte - 97)] += 1;
+        }
+    });
 
     if counts.iter().sum::<usize>() == 0 {
         return None;
@@ -71,13 +70,14 @@ fn count_letters(bytes: &[u8]) -> Option<[usize; 26]> {
 /// ASCII test alone is enough to delimiate possible keys to human scale
 fn main() {
     let inputs = hex::decode(INPUTS).unwrap();
-    let ref_frequencies = EnglishFrequency { frequencies: REFERENCE_FREQUENCIES };
+    let ref_frequencies = EnglishFrequency {
+        frequencies: REFERENCE_FREQUENCIES,
+    };
 
     let mut x = (0u8..=255u8)
         .filter_map(|key| {
             let plaintext = decrypt(&inputs, &key);
-            let all_ascii = plaintext.iter()
-                .all(|byte| is_ascii(byte));
+            let all_ascii = plaintext.iter().all(|byte| is_ascii(byte));
             if !all_ascii {
                 return None;
             }
@@ -100,6 +100,5 @@ fn main() {
         return f1.partial_cmp(f2).unwrap();
     });
 
-    x.iter().take(3)
-        .for_each(|elem| println!("{:?}", elem));
+    x.iter().take(3).for_each(|elem| println!("{:?}", elem));
 }
