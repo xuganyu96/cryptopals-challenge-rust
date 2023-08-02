@@ -9,33 +9,24 @@ fn decrypt(ciphertext: &[u8], key: &u8) -> Vec<u8> {
         .collect::<Vec<u8>>();
 }
 
-/// The value at index i encodes the frequency as fraction between 0 and 1
-struct AsciiFrequencies {
-    frequencies: [f64; 256],
+/// True if the byte can encode a printable ASCII character
+fn is_ascii(byte: &u8) -> bool {
+    return (32u8..127u8).contains(byte);
 }
 
-impl AsciiFrequencies {
-    fn new() -> Self {
-        return Self {
-            frequencies: [0.0; 256],
-        };
-    }
-
-    fn mean_squared_difference(&self, other: &Self) -> f64 {
-        return self.frequencies.iter()
-            .zip(other.frequencies.iter())
-            .map(|(f1, f2)| (f2 - f1) * (f2 - f1))
-            .sum();
-    }
-}
+// TODO: implement frequency analysis
 
 fn main() {
     let inputs = hex::decode(INPUTS).unwrap();
     // TODO: implement frequency analysis
     for key in 0u8..=255u8 {
         let plaintext = decrypt(&inputs, &key);
+
+        let all_ascii = plaintext.iter()
+            .all(|byte| is_ascii(byte));
+
         let outputs = String::from_utf8(plaintext);
-        if outputs.is_ok() {
+        if outputs.is_ok() && all_ascii {
             println!("{outputs:?}");
         }
     }
