@@ -94,8 +94,10 @@ pub fn n_best_keys(
     let mut key_scores = (0u8..=255u8) // all possible keys
         .filter_map(|key| {
             let plaintext = decrypt(ciphertext, &key);
-            let all_ascii = plaintext.iter().all(|byte| (32..=126).contains(byte));
-            if ascii_only && !all_ascii {
+            let all_printable_ascii = plaintext
+                .iter()
+                .all(|byte| (32..=126).contains(byte) || *byte == 10 || *byte == 9);
+            if ascii_only && !all_printable_ascii {
                 return None;
             }
 
