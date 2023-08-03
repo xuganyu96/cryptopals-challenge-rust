@@ -1,6 +1,7 @@
 //! https://cryptopals.com/sets/1/challenges/4
-use std::fs;
 use clap::Parser;
+use hex;
+use std::fs;
 
 /// One of the 60-character strings in the input file has been encrypted by single-byte XOR, find
 /// it.
@@ -21,11 +22,14 @@ struct Args {
 }
 
 /// Try every key for every ciphertext, each time recording the MSE with the reference frequencies.
-/// List the N best 
+/// List the N best
 fn main() {
     let args = Args::parse();
     println!("{:?}", args);
 
-
-    let _inputs = fs::read_to_string(args.file).unwrap();
+    let inputs = fs::read_to_string(args.file)
+        .unwrap()
+        .lines()
+        .map(|line_str| hex::decode(line_str.to_string()).unwrap())
+        .collect::<Vec<Vec<u8>>>();
 }
