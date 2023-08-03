@@ -25,7 +25,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let args = Args::parse();
     let ciphertext = hex::decode(args.input_str)?;
 
-    let best_keys = caesar::n_best_keys(&ciphertext, &EnglishFrequency::reference(), args.n);
+    let best_keys = caesar::n_best_keys(&ciphertext, &EnglishFrequency::reference(), args.n, true);
     best_keys.iter().enumerate().for_each(|(i, key)| {
         let plaintext = caesar::decrypt(&ciphertext, key);
         let mse = EnglishFrequency::from_bytes(&plaintext)

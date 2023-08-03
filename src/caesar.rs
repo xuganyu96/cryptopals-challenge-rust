@@ -82,10 +82,23 @@ impl EnglishFrequency {
 /// Given some ciphertext and some reference English letter frequency, return (up to) the n best
 /// keys for decrypting the input ciphertext. The best decryption is the one whose plaintext's
 /// frequencies have the lowest MSE against the reference frequencies
-pub fn n_best_keys(ciphertext: &[u8], reference: &EnglishFrequency, n: usize) -> Vec<u8> {
-    let mut key_scores = (0u8..=255u8)  // all possible keys
+///
+/// If ascii_only is set to true, then decryption that contains bytes outside the printable ASCII
+/// range will be excluded
+pub fn n_best_keys(
+    ciphertext: &[u8],
+    reference: &EnglishFrequency,
+    n: usize,
+    ascii_only: bool,
+) -> Vec<u8> {
+    let mut key_scores = (0u8..=255u8) // all possible keys
         .filter_map(|key| {
             let plaintext = decrypt(ciphertext, &key);
+            let all_ascii = plaintext.iter().all(|byte| (32..=126).contains(byte));
+            if ascii_only && !all_ascii {
+                return None;
+            }
+
             let mse = match EnglishFrequency::from_bytes(&plaintext) {
                 None => return None,
                 Some(frequencies) => frequencies.mse(reference),
@@ -98,7 +111,8 @@ pub fn n_best_keys(ciphertext: &[u8], reference: &EnglishFrequency, n: usize) ->
         let (_, f2) = f2;
         return f1.partial_cmp(f2).unwrap();
     });
-    let best_keys = key_scores.iter()
+    let best_keys = key_scores
+        .iter()
         .take(n)
         .map(|(key, _)| *key)
         .collect::<Vec<u8>>();
