@@ -85,6 +85,8 @@ impl EnglishFrequency {
 ///
 /// If ascii_only is set to true, then decryption that contains bytes outside the printable ASCII
 /// range will be excluded
+///
+/// If n is 0, then all suitable keys will be returned
 pub fn n_best_keys(
     ciphertext: &[u8],
     reference: &EnglishFrequency,
@@ -113,10 +115,13 @@ pub fn n_best_keys(
         let (_, f2) = f2;
         return f1.partial_cmp(f2).unwrap();
     });
-    let best_keys = key_scores
-        .iter()
-        .take(n)
-        .map(|(key, _)| *key)
-        .collect::<Vec<u8>>();
+    let best_keys = match n {
+        0 => key_scores.iter().map(|(key, _)| *key).collect::<Vec<u8>>(),
+        _ => key_scores
+            .iter()
+            .take(n)
+            .map(|(key, _)| *key)
+            .collect::<Vec<u8>>(),
+    };
     return best_keys;
 }

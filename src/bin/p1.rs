@@ -6,10 +6,7 @@
 //!
 //! TODO: Implement the conversion by hand
 use base64;
-use base64::{
-    engine::general_purpose,
-    Engine as _,
-};
+use base64::{engine::general_purpose, Engine as _};
 use hex;
 
 const INPUTS: &str = "49276d206b696c6c696e6720796f757220627261696e206c696b65206120706f69736f6e6f7573206d757368726f6f6d";

@@ -8,9 +8,9 @@ use std::fs;
 /// it.
 #[derive(Debug, Parser)]
 struct Args {
-    /// List the N best decryptions. Defaults to 5
+    /// List the N best decryptions. Defaults to 3
     #[arg(short)]
-    #[arg(default_value_t = 5)]
+    #[arg(default_value_t = 3)]
     n: usize,
 
     /// Print not only the best decryption, but also its corresponding ciphertext (with hex
@@ -22,34 +22,45 @@ struct Args {
     file: String,
 }
 
-/// Try every key for every ciphertext, each time recording the MSE with the reference frequencies.
-/// List the N best
 fn main() {
     let args = Args::parse();
-    println!("{:?}", args);
 
-    let _inputs = fs::read_to_string(args.file)
+    let mut global_best_decryptions = fs::read_to_string(args.file)
         .unwrap()
         .lines()
         .enumerate()
         .filter_map(|(i, line)| match hex::decode(line.to_string()) {
-            Ok(bytes) => Some((i, bytes)),
+            Ok(ciphertext) => Some((i, ciphertext)),
             Err(_) => None,
         })
-        .for_each(|(i, ciphertext)| {
-            // TODO: for now this is enough to uncover the plaintext; add some additional logic to
-            // rank decryptions across plaintexts so that the best one is ranked at the top.
+        .map(|(i, ciphertext)| {
+            // map each ciphertext to a vector of its best decryptions
             let best_keys =
-                caesar::n_best_keys(&ciphertext, &EnglishFrequency::reference(), args.n, false);
-            for key in best_keys {
-                let pt = caesar::decrypt(&ciphertext, &key);
-                let mse = EnglishFrequency::from_bytes(&pt)
-                    .unwrap()
-                    .mse(&EnglishFrequency::reference());
-                let pt_str = String::from_utf8(pt);
-                if pt_str.is_ok() {
-                    println!("line: {i}, key: {key}, mse: {mse}, plaintext: {pt_str:?}");
-                }
-            }
-        });
+                caesar::n_best_keys(&ciphertext, &EnglishFrequency::reference(), 0, true);
+            return best_keys
+                .iter()
+                .map(|key| (i, ciphertext.clone(), *key))
+                .collect::<Vec<(usize, Vec<u8>, u8)>>();
+        })
+        .flatten() // from vector of vectors to just the elements
+        .map(|(i, ciphertext, key)| {
+            let pt = caesar::decrypt(&ciphertext, &key);
+            let mse = EnglishFrequency::from_bytes(&pt)
+                .unwrap()
+                .mse(&EnglishFrequency::reference());
+            return (i, ciphertext, key, pt, mse);
+        })
+        .collect::<Vec<(usize, Vec<u8>, u8, Vec<u8>, f64)>>();
+    global_best_decryptions.sort_by(|elem1, elem2| {
+        let (_, _, _, _, mse1) = elem1;
+        let (_, _, _, _, mse2) = elem2;
+        return mse1.partial_cmp(mse2).unwrap();
+    });
+    global_best_decryptions.into_iter().take(args.n).for_each(
+        |(i, ciphertext, key, plaintext, mse)| {
+            println!("line: {i}, key: {key}, score: {mse}");
+            println!("    ciphertext: {}", hex::encode(ciphertext));
+            println!("    plaintext: {:?}", String::from_utf8(plaintext));
+        },
+    );
 }

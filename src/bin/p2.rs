@@ -9,7 +9,8 @@ fn main() {
     let lhs = hex::decode(LHS).unwrap();
     let rhs = hex::decode(RHS).unwrap();
 
-    let xor_bytes = lhs.iter()
+    let xor_bytes = lhs
+        .iter()
         .zip(rhs.iter())
         .map(|(left_byte, right_byte)| {
             let xor_byte = left_byte ^ right_byte;
