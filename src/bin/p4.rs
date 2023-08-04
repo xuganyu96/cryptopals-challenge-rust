@@ -13,11 +13,6 @@ struct Args {
     #[arg(default_value_t = 3)]
     n: usize,
 
-    /// Print not only the best decryption, but also its corresponding ciphertext (with hex
-    /// encoding) and decryption key
-    #[arg(long)]
-    verbose: bool,
-
     /// The input data file
     file: String,
 }
