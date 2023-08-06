@@ -3,6 +3,8 @@
 
 /// Given a finitely sized key, the repeating key can be used to repeat through the bytes
 /// indefinitely
+use std::error::Error;
+
 pub struct RepeatingKey<'a> {
     key: &'a [u8],
     cursor: usize,
@@ -55,6 +57,35 @@ pub fn decrypt(ciphertext: &[u8], key: RepeatingKey) -> Vec<u8> {
         .collect::<Vec<u8>>();
 }
 
+/// Count the number of bits that are 1 in a byte
+fn sum_bits(mut byte: u8) -> usize {
+    let mut count = 0;
+
+    while byte != 0 {
+        if byte % 2 == 1 {
+            count += 1;
+        }
+        byte = byte >> 1;
+    }
+
+    return count;
+}
+
+/// The edit distance/hamming distance is the number of differing bits.
+/// If two byte strings are not the same length, return Error
+fn hamming(lhs: &[u8], rhs: &[u8]) -> Result<usize, Box<dyn Error>> {
+    if lhs.len() != rhs.len() {
+        return Err("Strings of unequal lengths cannot be compared".into());
+    }
+
+    let sum = lhs
+        .iter()
+        .zip(rhs.iter())
+        .map(|(b1, b2)| sum_bits(b1 ^ b2))
+        .sum::<usize>();
+    return Ok(sum);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -65,5 +96,28 @@ mod tests {
         let key = RepeatingKey::new(&root_key);
         let bytes = key.take(5).collect::<Vec<u8>>();
         assert_eq!(bytes, vec![0, 1, 2, 0, 1]);
+    }
+
+    #[test]
+    fn test_sum_bits() {
+        assert_eq!(sum_bits(0), 0);
+        assert_eq!(sum_bits(1), 1);
+        assert_eq!(sum_bits(2), 1);
+        assert_eq!(sum_bits(4), 1);
+        assert_eq!(sum_bits(8), 1);
+        assert_eq!(sum_bits(16), 1);
+        assert_eq!(sum_bits(32), 1);
+        assert_eq!(sum_bits(64), 1);
+        assert_eq!(sum_bits(128), 1);
+        assert_eq!(sum_bits(255), 8);
+        assert_eq!(sum_bits(254), 7);
+    }
+
+    #[test]
+    fn test_hamming() {
+        assert_eq!(
+            hamming("this is a test".as_bytes(), "wokka wokka!!!".as_bytes()).unwrap(),
+            37
+        );
     }
 }
