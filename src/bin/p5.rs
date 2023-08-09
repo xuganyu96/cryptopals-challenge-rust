@@ -13,11 +13,11 @@
 //! 0b3637272a2b2e63622c2e69692a23693a2a3c6324202d623d63343c2a26226324272765272a282b2f20430a652e2c65
 //! 2a3124333a653e2b2027630c692b20283165286326302e27282f
 use clap::Parser;
+use cryptopals::common;
 use cryptopals::vigenere::{self, RepeatingKey};
 use hex;
 use std::error::Error;
-use std::fs::File;
-use std::io::{self, Read};
+use std::io::Read;
 
 #[derive(Debug, Parser)]
 struct Args {
@@ -30,21 +30,10 @@ struct Args {
     data: Option<String>,
 }
 
-/// Open a file if there is a path, else open stdin
-fn open(path: Option<String>) -> Result<Box<dyn Read>, Box<dyn Error>> {
-    return match path {
-        None => Ok(Box::new(io::stdin())),
-        Some(file_path) => {
-            let file = File::open(file_path)?;
-            Ok(Box::new(file))
-        }
-    };
-}
-
 fn main() -> Result<(), Box<dyn Error>> {
     let args = Args::parse();
 
-    let mut reader = open(args.data)?;
+    let mut reader = common::open(args.data)?;
     let mut plaintext: String = String::new();
     reader.read_to_string(&mut plaintext)?;
     let ciphertext = vigenere::encrypt(
