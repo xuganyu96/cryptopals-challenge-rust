@@ -1,6 +1,9 @@
 //! https://cryptopals.com/sets/1/challenges/6
+use base64;
+use base64::{engine::general_purpose, Engine as _};
 use clap::Parser;
 use cryptopals::common;
+use cryptopals::vigenere;
 use std::error::Error;
 
 /// The input data has been encrypted with repeating-key XOR and encoded in base-64. This program
@@ -25,6 +28,12 @@ fn main() -> Result<(), Box<dyn Error>> {
         .collect::<Vec<String>>()
         .join("");
     println!("{}", ciphertext_b64);
+    let ciphertext = general_purpose::STANDARD.decode(ciphertext_b64)?;
+    let keysizes = vigenere::rank_keysizes(&ciphertext);
+    keysizes
+        .iter()
+        .take(3)
+        .for_each(|(keysize, score)| println!("keysize: {keysize}, hamming: {score}"));
 
     return Ok(());
 }

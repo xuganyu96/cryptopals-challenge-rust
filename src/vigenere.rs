@@ -62,10 +62,8 @@ fn sum_bits(mut byte: u8) -> usize {
     let mut count = 0;
 
     while byte != 0 {
-        if byte % 2 == 1 {
-            count += 1;
-        }
-        byte = byte >> 1;
+        count += 1;
+        byte = byte & (byte - 1);
     }
 
     return count;
@@ -100,6 +98,29 @@ fn keysize_score(ciphertext: &[u8], keysize: usize) -> Result<f64, Box<dyn Error
     let avg = (dist as f64) / (keysize as f64);
 
     return Ok(avg);
+}
+
+/// Return a list of possible key sizes sorted by their keysize score
+/// Key size with a lower score (a lower hamming distance) will have a higher ranking since it is
+/// the more likely key.
+///
+/// If the ciphertext is too short even for a keysize of 1, the list will be empty
+pub fn rank_keysizes(ciphertext: &[u8]) -> Vec<(usize, f64)> {
+    let max = ciphertext.len() / 2;
+    let mut scores = (1..=max)
+        .filter_map(|keysize| match keysize_score(ciphertext, keysize) {
+            Ok(score) => Some((keysize, score)),
+            Err(_) => None,
+        })
+        .collect::<Vec<(usize, f64)>>();
+
+    scores.sort_by(|elem1, elem2| {
+        let (_, score1) = elem1;
+        let (_, score2) = elem2;
+        return score1.partial_cmp(score2).unwrap();
+    });
+
+    return scores;
 }
 
 #[cfg(test)]
