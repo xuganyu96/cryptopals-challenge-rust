@@ -86,6 +86,22 @@ fn hamming(lhs: &[u8], rhs: &[u8]) -> Result<usize, Box<dyn Error>> {
     return Ok(sum);
 }
 
+/// Evaluate the score of a certain key size by finding the hamming distance between the first
+/// batch of bytes against the second batch of bytes, where the two batches each contains key_size
+/// number of bytes
+fn keysize_score(ciphertext: &[u8], keysize: usize) -> Result<f64, Box<dyn Error>> {
+    if 2 * keysize > ciphertext.len() {
+        return Err("Key size is too large".into());
+    }
+    // Unwrap is okay after the size check
+    let lhs = ciphertext.get(0..keysize).unwrap();
+    let rhs = ciphertext.get(keysize..(2 * keysize)).unwrap();
+    let dist = hamming(lhs, rhs)?;
+    let avg = (dist as f64) / (keysize as f64);
+
+    return Ok(avg);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -118,6 +134,16 @@ mod tests {
         assert_eq!(
             hamming("this is a test".as_bytes(), "wokka wokka!!!".as_bytes()).unwrap(),
             37
+        );
+    }
+
+    #[test]
+    fn test_keysize_score() {
+        // we know that "this is a test" and "wokka wokka!!!" have edit distance of 37
+        // each has length 14, so the average distance should be 37 / 14
+        assert_eq!(
+            keysize_score("this is a testwokka wokka!!!".as_bytes(), 14).unwrap(),
+            (37usize as f64) / (14 as f64),
         );
     }
 }
