@@ -1,16 +1,23 @@
 //! The Vigenere cipher
 //! Generalized to work with bytes
+use std::error::Error;
 
 /// Given a finitely sized key, the repeating key can be used to repeat through the bytes
 /// indefinitely
-use std::error::Error;
-
 pub struct RepeatingKey<'a> {
     key: &'a [u8],
     cursor: usize,
 }
 
 impl<'a> RepeatingKey<'a> {
+    /// Given a key size (in number of bytes), return an iterator that iterates through all
+    /// possible RepeatingKey whose root key has matching sizes.
+    ///
+    /// A quick sanity check: for size = n, the iterator should contain (2 ^ 8n) items
+    pub fn generate(size: usize) -> Box<dyn Iterator<Item = Self>> {
+        todo!();
+    }
+
     pub fn new(key: &'a [u8]) -> Self {
         Self { key, cursor: 0 }
     }
