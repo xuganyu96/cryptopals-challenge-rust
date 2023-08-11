@@ -14,7 +14,7 @@
 //! 2a3124333a653e2b2027630c692b20283165286326302e27282f
 use clap::Parser;
 use cryptopals::common;
-use cryptopals::vigenere::{self, RepeatingKey};
+use cryptopals::vigenere;
 use hex;
 use std::error::Error;
 use std::io::Read;
@@ -36,10 +36,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut reader = common::open(args.data)?;
     let mut plaintext: String = String::new();
     reader.read_to_string(&mut plaintext)?;
-    let ciphertext = vigenere::encrypt(
-        &plaintext.as_bytes(),
-        RepeatingKey::new(&args.key.as_bytes()),
-    );
+    let ciphertext = vigenere::encrypt(&plaintext.as_bytes(), &args.key.as_bytes());
     println!("{}", hex::encode(ciphertext));
 
     return Ok(());

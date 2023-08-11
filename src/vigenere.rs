@@ -35,26 +35,26 @@ impl<'a> Iterator for RepeatingKey<'a> {
     }
 }
 
-pub fn encrypt(plaintext: &[u8], key: RepeatingKey) -> Vec<u8> {
-    if key.is_empty() {
-        return plaintext.to_vec();
+fn repeating_key_xor(data: &[u8], key: &[u8]) -> Vec<u8> {
+    if key.len() == 0 {
+        return data.to_vec();
     }
-    return plaintext
+    return data
         .iter()
-        .zip(key.take(plaintext.len()))
-        .map(|(lhs, rhs)| (*lhs) ^ rhs)
+        .enumerate()
+        .map(|(i, byte)| {
+            let key_byte = key.get(i % key.len()).unwrap();
+            return byte ^ key_byte;
+        })
         .collect::<Vec<u8>>();
 }
 
-pub fn decrypt(ciphertext: &[u8], key: RepeatingKey) -> Vec<u8> {
-    if key.is_empty() {
-        return ciphertext.to_vec();
-    }
-    return ciphertext
-        .iter()
-        .zip(key.take(ciphertext.len()))
-        .map(|(lhs, rhs)| (*lhs) ^ rhs)
-        .collect::<Vec<u8>>();
+pub fn encrypt(plaintext: &[u8], key: &[u8]) -> Vec<u8> {
+    return repeating_key_xor(plaintext, key);
+}
+
+pub fn decrypt(ciphertext: &[u8], key: &[u8]) -> Vec<u8> {
+    return repeating_key_xor(ciphertext, key);
 }
 
 /// Count the number of bits that are 1 in a byte
