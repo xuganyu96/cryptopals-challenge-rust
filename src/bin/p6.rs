@@ -2,8 +2,9 @@
 use base64;
 use base64::{engine::general_purpose, Engine as _};
 use clap::Parser;
+use cryptopals::caesar::EnglishFrequency;
 use cryptopals::common;
-use cryptopals::vigenere;
+use cryptopals::vigenere::{self, RepeatingKey};
 use std::error::Error;
 
 /// The input data has been encrypted with repeating-key XOR and encoded in base-64. This program
@@ -27,13 +28,18 @@ fn main() -> Result<(), Box<dyn Error>> {
         .map(|line| line.to_string())
         .collect::<Vec<String>>()
         .join("");
-    println!("{}", ciphertext_b64);
     let ciphertext = general_purpose::STANDARD.decode(ciphertext_b64)?;
     let keysizes = vigenere::rank_keysizes(&ciphertext);
-    keysizes
-        .iter()
-        .take(3)
-        .for_each(|(keysize, score)| println!("keysize: {keysize}, hamming: {score}"));
+    keysizes.iter().take(8).for_each(|(keysize, score)| {
+        println!("keysize: {keysize}, hamming: {score}");
+
+        let root_key =
+            vigenere::solve_with_keysize(&ciphertext, *keysize, &EnglishFrequency::reference());
+        println!("{:?}", String::from_utf8(root_key.clone()));
+        let key = RepeatingKey::new(&root_key);
+        let pt = vigenere::decrypt(&ciphertext, key);
+        println!("{:?}", String::from_utf8(pt));
+    });
 
     return Ok(());
 }

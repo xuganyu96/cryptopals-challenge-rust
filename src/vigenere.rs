@@ -1,5 +1,6 @@
 //! The Vigenere cipher
 //! Generalized to work with bytes
+use crate::caesar::{self, EnglishFrequency};
 use std::error::Error;
 
 /// Given a finitely sized key, the repeating key can be used to repeat through the bytes
@@ -10,14 +11,6 @@ pub struct RepeatingKey<'a> {
 }
 
 impl<'a> RepeatingKey<'a> {
-    /// Given a key size (in number of bytes), return an iterator that iterates through all
-    /// possible RepeatingKey whose root key has matching sizes.
-    ///
-    /// A quick sanity check: for size = n, the iterator should contain (2 ^ 8n) items
-    pub fn generate(size: usize) -> Box<dyn Iterator<Item = Self>> {
-        todo!();
-    }
-
     pub fn new(key: &'a [u8]) -> Self {
         Self { key, cursor: 0 }
     }
@@ -98,11 +91,20 @@ fn keysize_score(ciphertext: &[u8], keysize: usize) -> Result<f64, Box<dyn Error
     if 2 * keysize > ciphertext.len() {
         return Err("Key size is too large".into());
     }
+    let mut i: usize = 0;
+    let mut sum: f64 = 0.;
+    while (i + 2) * keysize <= ciphertext.len() {
+        let lhs = ciphertext.get((i * keysize)..((i + 1) * keysize)).unwrap();
+        let rhs = ciphertext
+            .get(((i + 1) * keysize)..((i + 2) * keysize))
+            .unwrap();
+        let dist = hamming(lhs, rhs)?;
+        let avg = (dist as f64) / (keysize as f64);
+        sum += avg;
+        i += 1;
+    }
     // Unwrap is okay after the size check
-    let lhs = ciphertext.get(0..keysize).unwrap();
-    let rhs = ciphertext.get(keysize..(2 * keysize)).unwrap();
-    let dist = hamming(lhs, rhs)?;
-    let avg = (dist as f64) / (keysize as f64);
+    let avg = sum / (i as f64);
 
     return Ok(avg);
 }
@@ -128,6 +130,38 @@ pub fn rank_keysizes(ciphertext: &[u8]) -> Vec<(usize, f64)> {
     });
 
     return scores;
+}
+
+/// Return the best key of the input size using the input English letter frequency
+pub fn solve_with_keysize(
+    ciphertext: &[u8],
+    keysize: usize,
+    reference: &EnglishFrequency,
+) -> Vec<u8> {
+    let mut key = vec![0u8; keysize];
+
+    for k in 0..keysize {
+        let partial_ciphertext = ciphertext
+            .iter()
+            .enumerate()
+            .filter_map(|(i, byte)| {
+                if i % keysize == k {
+                    return Some(*byte);
+                }
+                return None;
+            })
+            .collect::<Vec<u8>>();
+        let best_partial_keys = caesar::n_best_keys(&partial_ciphertext, reference, 1, true);
+        match best_partial_keys.get(0) {
+            Some(best_partial_key) => {
+                let mutref = key.get_mut(k).unwrap();
+                *mutref = *best_partial_key;
+            }
+            _ => (),
+        }
+    }
+
+    return key;
 }
 
 #[cfg(test)]
