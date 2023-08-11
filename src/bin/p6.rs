@@ -11,6 +11,11 @@ use std::error::Error;
 /// tries to solve it. Example:
 ///
 /// cargo run --bin p6 -- inputs/6.txt
+///
+/// TODO: with the current code, the correct answer (with keysize 29) is ranked 7, below several
+/// keys that decrypt to non-sense. For the sake to getting to the fun part fast, we will skip
+/// optimizing this solution, but it would be great if we can come back and further refine the
+/// solution
 #[derive(Debug, Parser)]
 struct Args {
     /// Try only the top n decryptions; defaults to 10
@@ -35,13 +40,17 @@ fn main() -> Result<(), Box<dyn Error>> {
         .join("");
     let ciphertext = general_purpose::STANDARD.decode(ciphertext_b64)?;
     let keysizes = vigenere::rank_keysizes(&ciphertext);
-    keysizes.iter().take(args.n).for_each(|(keysize, hamming)| {
-        println!("key: {:?}, hamming: {:?}", keysize, hamming);
-        let key =
-            vigenere::solve_with_keysize(&ciphertext, *keysize, &EnglishFrequency::reference());
-        let plaintext = vigenere::decrypt(&ciphertext, &key);
-        println!("{:?}", String::from_utf8(plaintext));
-    });
+    keysizes
+        .iter()
+        .take(args.n)
+        .enumerate()
+        .for_each(|(i, (keysize, hamming))| {
+            println!("rank: {i}, key: {:?}, hamming: {:?}", keysize, hamming);
+            let key =
+                vigenere::solve_with_keysize(&ciphertext, *keysize, &EnglishFrequency::reference());
+            let plaintext = vigenere::decrypt(&ciphertext, &key);
+            println!("  msg: {:?}", String::from_utf8(plaintext));
+        });
 
     return Ok(());
 }
