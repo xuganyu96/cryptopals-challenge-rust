@@ -1,5 +1,11 @@
 My attempts at the Cryptopals Challenges using Rust
 
+For problem 7, I am having a hard time getting the openssl command line tool to work. Here are is what I have tried:
+
+```
+openssl aes-128-ecb -in inputs/7.txt -out msg.txt -a -d
+```
+
 # How to run individual programs
 
 1. `cargo run --bin p1`
