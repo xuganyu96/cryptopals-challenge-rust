@@ -1,7 +1,7 @@
 //! Convenient implementation of the AES-128-ECB stream cipher
-use std::error::Error;
-use aes::cipher::{generic_array::GenericArray, BlockCipher, BlockDecrypt, BlockEncrypt, KeyInit};
+use aes::cipher::{generic_array::GenericArray, BlockDecrypt, BlockEncrypt, KeyInit};
 use aes::Aes128;
+use std::error::Error;
 
 /// The cipher itself, which maintains state of the cipher. Electrnic code book are technically
 /// stateless, but for the sake of consistency with future implementation we will still use a
@@ -58,12 +58,12 @@ impl Aes128Ecb {
             return Err("Invalid ciphertext length".into());
         }
         let mut plaintext = vec![];
-        
+
         let nblocks = ciphertext.len() / 16;
         for i in 0..nblocks {
             let mut block: [u8; 16] = [0u8; 16];
             let block_start = i * 16;
-            let block_end = (i+1) * 16;
+            let block_end = (i + 1) * 16;
             block.copy_from_slice(ciphertext.get(block_start..block_end).unwrap());
             let mut block = GenericArray::from(block);
             self.cipher.decrypt_block(&mut block);
@@ -71,7 +71,7 @@ impl Aes128Ecb {
 
             if i == (nblocks - 1) {
                 let pad = plaintext_block.get(plaintext_block.len() - 1).unwrap();
-                let pad: usize = (*pad) as usize;  // the last "pad" number of bytes are pad
+                let pad: usize = (*pad) as usize; // the last "pad" number of bytes are pad
                 let end = plaintext_block.len() - pad;
                 plaintext.extend_from_slice(plaintext_block.get(0..end).unwrap());
             } else {

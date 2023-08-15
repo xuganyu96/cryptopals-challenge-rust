@@ -3,13 +3,16 @@ pub mod caesar;
 pub mod vigenere;
 
 pub mod common {
+    use core::result;
     use std::error::Error;
     use std::fs::File;
     use std::io::{self, Read};
 
+    pub type Result<T> = result::Result<T, Box<dyn Error>>;
+
     /// Return a reader that reads from the file specified by the input path; if no input path is
     /// given, open a reader on stdin
-    pub fn open(path: Option<String>) -> Result<Box<dyn Read>, Box<dyn Error>> {
+    pub fn open(path: Option<String>) -> Result<Box<dyn Read>> {
         return match path {
             Some(filepath) => {
                 let file = File::open(filepath)?;
