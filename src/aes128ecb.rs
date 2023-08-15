@@ -54,7 +54,32 @@ impl Aes128Ecb {
     }
 
     pub fn decrypt(&mut self, ciphertext: &[u8]) -> Result<Vec<u8>, Box<dyn Error>> {
-        todo!();
+        if ciphertext.len() % 16 != 0 {
+            return Err("Invalid ciphertext length".into());
+        }
+        let mut plaintext = vec![];
+        
+        let nblocks = ciphertext.len() / 16;
+        for i in 0..nblocks {
+            let mut block: [u8; 16] = [0u8; 16];
+            let block_start = i * 16;
+            let block_end = (i+1) * 16;
+            block.copy_from_slice(ciphertext.get(block_start..block_end).unwrap());
+            let mut block = GenericArray::from(block);
+            self.cipher.decrypt_block(&mut block);
+            let plaintext_block = block.to_vec();
+
+            if i == (nblocks - 1) {
+                let pad = plaintext_block.get(plaintext_block.len() - 1).unwrap();
+                let pad: usize = (*pad) as usize;  // the last "pad" number of bytes are pad
+                let end = plaintext_block.len() - pad;
+                plaintext.extend_from_slice(plaintext_block.get(0..end).unwrap());
+            } else {
+                plaintext.extend_from_slice(&plaintext_block);
+            }
+        }
+
+        return Ok(plaintext);
     }
 }
 
@@ -67,11 +92,13 @@ mod tests {
         let mut cipher = Aes128Ecb::from_key("0000000000000000".as_bytes()).unwrap();
         let plaintext = "0000000000000000";
         let ciphertext = cipher.encrypt(plaintext.as_bytes());
-        println!("{:?}", ciphertext);
 
         assert_eq!(
-            hex::encode(ciphertext),
+            hex::encode(&ciphertext),
             "f95c7f6b192b22bffefd1b779933fbfc346bce0b8eed34da10f6a8fabb844494"
         );
+
+        let decrypted_msg = cipher.decrypt(&ciphertext).unwrap();
+        assert_eq!(decrypted_msg, plaintext.as_bytes())
     }
 }
