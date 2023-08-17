@@ -2,7 +2,16 @@ use base64;
 use base64::{engine::general_purpose, Engine as _};
 use cryptopals::aes128ecb::Aes128Ecb;
 use cryptopals::common;
-use std::collections::HashMap;
+use cryptopals::encoding;
+
+#[test]
+fn problem1() {
+    let hex_str: &str = "49276d206b696c6c696e6720796f757220627261696e206c696b65206120706f69736f6e6f7573206d757368726f6f6d";
+    let base64_str: &str = "SSdtIGtpbGxpbmcgeW91ciBicmFpbiBsaWtlIGEgcG9pc29ub3VzIG11c2hyb29t";
+
+    let bytes = encoding::decode_hex(hex_str).unwrap();
+    assert_eq!(encoding::encode_base64(&bytes), base64_str);
+}
 
 #[test]
 fn problem7() -> common::Result<()> {
