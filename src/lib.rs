@@ -1,6 +1,7 @@
 pub mod aes128ecb;
 pub mod caesar;
 pub mod encoding;
+pub mod plaintext_analysis;
 pub mod vigenere;
 
 pub mod common {
