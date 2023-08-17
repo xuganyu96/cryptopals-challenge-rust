@@ -3,7 +3,9 @@ use base64::{engine::general_purpose, Engine as _};
 use cryptopals::aes128ecb::Aes128Ecb;
 use cryptopals::common;
 use cryptopals::encoding;
+use cryptopals::vigenere;
 
+/// Convert the hex encoding to base64 encoding
 #[test]
 fn problem1() {
     let hex_str: &str = "49276d206b696c6c696e6720796f757220627261696e206c696b65206120706f69736f6e6f7573206d757368726f6f6d";
@@ -11,6 +13,25 @@ fn problem1() {
 
     let bytes = encoding::decode_hex(hex_str).unwrap();
     assert_eq!(encoding::encode_base64(&bytes), base64_str);
+}
+
+/// Fixed-length XOR
+/// While we could approach by writing a dedicated function for doing fixed-length XOR, knowing
+/// that in later problems there will be implementations of Caesar and Vigenere ciphers, it's
+/// easier to implement a Vigenere cipher and just use that
+#[test]
+fn problem2() {
+    let plaintext_str: &str = "1c0111001f010100061a024b53535009181c";
+    let key_str: &str = "686974207468652062756c6c277320657965";
+
+    let plaintext = encoding::decode_hex(plaintext_str).unwrap();
+    let key = encoding::decode_hex(key_str).unwrap();
+    let ciphertext = vigenere::encrypt(&plaintext, &key);
+
+    assert_eq!(
+        encoding::encode_hex(&ciphertext),
+        "746865206b696420646f6e277420706c6179"
+    );
 }
 
 #[test]
