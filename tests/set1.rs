@@ -34,6 +34,22 @@ fn problem2() {
     );
 }
 
+/// Break Fixed-length XOR
+///
+/// Again, this is implemented with the foresight that we will be doing Vigenere later, and that
+/// Caesar cipher is just Vigenere cipher with a key length of 1
+#[test]
+fn problem3() {
+    let ciphertext_hex = "1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736";
+    let ciphertext = hex::decode(ciphertext_hex).unwrap();
+
+    let keys = vigenere::solve_caesar(&ciphertext);
+    let (key, _) = keys.get(0).unwrap();
+    let plaintext = vigenere::decrypt(&ciphertext, &[*key]);
+    let plaintext_str = String::from_utf8(plaintext).unwrap();
+    assert_eq!(plaintext_str, "Cooking MC's like a pound of bacon");
+}
+
 #[test]
 fn problem7() -> common::Result<()> {
     let mut reader = common::open(Some("tests/data/7.txt".to_string()))?;

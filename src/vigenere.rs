@@ -1,6 +1,7 @@
 //! The Vigenere cipher
 //! Generalized to work with bytes
 use crate::caesar::{self, EnglishFrequency};
+use crate::plaintext_analysis::{self, eng_char_threshold};
 use std::error::Error;
 
 fn repeating_key_xor(data: &[u8], key: &[u8]) -> Vec<u8> {
@@ -130,6 +131,38 @@ pub fn solve_with_keysize(
     }
 
     return key;
+}
+
+/// Solve a Caesar cipher, return the n best keys alongside their scores, where lower numerical
+/// values correspond to a better key
+pub fn solve_caesar(ciphertext: &[u8]) -> Vec<(u8, f64)> {
+    let mut keys = (0u8..=255u8)
+        .filter_map(|key| {
+            let plaintext = decrypt(ciphertext, &[key]);
+            let plaintext_str = match String::from_utf8(plaintext) {
+                Err(_) => return None,
+                Ok(plaintext_str) => plaintext_str,
+            };
+            if !plaintext_analysis::eng_char_threshold(&plaintext_str, 0.8) {
+                // NOTE: this felt arbitrary, but it works
+                return None;
+            }
+            let frequencies = plaintext_analysis::char_frequency(&plaintext_str);
+            let mse = plaintext_analysis::char_mse(
+                &frequencies,
+                &plaintext_analysis::reference_frequencies(),
+            );
+
+            return Some((key, mse));
+        })
+        .collect::<Vec<(u8, f64)>>();
+    keys.sort_by(|elem1, elem2| {
+        let (_, mse1) = elem1;
+        let (_, mse2) = elem2;
+        return mse1.partial_cmp(mse2).unwrap();
+    });
+
+    return keys;
 }
 
 #[cfg(test)]
