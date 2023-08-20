@@ -1,7 +1,7 @@
 //! The Vigenere cipher
 //! Generalized to work with bytes
 use crate::caesar::{self, EnglishFrequency};
-use crate::plaintext_analysis::{self, eng_char_threshold};
+use crate::plaintext_analysis;
 use std::error::Error;
 
 fn repeating_key_xor(data: &[u8], key: &[u8]) -> Vec<u8> {
