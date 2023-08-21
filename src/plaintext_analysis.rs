@@ -32,6 +32,9 @@ const ALPHABETIC_FREQUENCIES: [(char, f64); 26] = [
     ('z', 0.0007),
 ];
 
+/// Some arbitrary set of invalid characters in plaintext
+const INVALID_CHARS: [char; 1] = ['\0'];
+
 /// Return True iff the input bytes form valid UTF-8 strings according to Rust String
 pub fn is_valid_utf8(bytes: &[u8]) -> bool {
     return String::from_utf8(bytes.to_vec()).is_ok();
@@ -56,6 +59,13 @@ pub fn eng_char_threshold(plaintext: &str, threshold: f64) -> bool {
     let total: usize = plaintext.chars().count();
     let count_threshold = f64::round((total as f64) * threshold) as usize;
     return count >= count_threshold;
+}
+
+/// Return True iff input string contains invalid characters, as defined by the constant
+pub fn contains_invalid_chars(plaintext: &str) -> bool {
+    return plaintext
+        .chars()
+        .any(|char_| INVALID_CHARS.contains(&char_));
 }
 
 /// Count the percentage frequency of each unique character in the input string

@@ -50,23 +50,55 @@ fn problem3() {
     assert_eq!(plaintext_str, "Cooking MC's like a pound of bacon");
 }
 
+/// Break Fixed-length XOR, part 2
+///
+/// Similar to problem 3, but with 60 lines of ciphertexts among which one of them is encrypted
+/// with a Caesar cipher. There are some arbitary filtering, but in the end the thing works so I
+/// will move on
+#[test]
+fn problem4() {
+    let mut decryptions: Vec<(usize, u8, f64)> = vec![]; // line_no, key, mse
+    let ciphertext_str = include_str!("data/4.txt");
+    let ciphertexts = ciphertext_str
+        .lines()
+        .map(|line| hex::decode(line).unwrap())
+        .collect::<Vec<Vec<u8>>>();
+
+    ciphertexts.iter().enumerate().for_each(|(i, ciphertext)| {
+        let keys = vigenere::solve_caesar(&ciphertext);
+        for (key, mse) in keys {
+            decryptions.push((i, key, mse));
+        }
+    });
+
+    decryptions.sort_by(|elem1, elem2| {
+        let (_, _, mse1) = elem1;
+        let (_, _, mse2) = elem2;
+        return mse1.partial_cmp(mse2).unwrap();
+    });
+
+    let (i, key, _) = decryptions.get(0).unwrap();
+    let ciphertext = ciphertexts.get(*i).unwrap();
+    let plaintext = vigenere::decrypt(ciphertext, &[*key]);
+    let plaintext_str = String::from_utf8(plaintext).unwrap();
+    assert_eq!(plaintext_str, "Now that the party is jumping\n");
+}
+
 #[test]
 fn problem7() -> common::Result<()> {
-    let mut reader = common::open(Some("tests/data/7.txt".to_string()))?;
-    let mut buf = String::new();
-    reader.read_to_string(&mut buf).unwrap();
-
     let mut ciphertext: Vec<u8> = vec![];
 
-    buf.lines().for_each(|line| {
+    include_str!("data/7.txt").lines().for_each(|line| {
         let mut ciphertext_block = general_purpose::STANDARD.decode(line).unwrap();
         ciphertext.append(&mut ciphertext_block);
     });
 
     let mut cipher = Aes128Ecb::from_key("YELLOW SUBMARINE".as_bytes())?;
     let plaintext = cipher.decrypt(&ciphertext)?;
-    let answer = include_str!("data/7-plaintext.txt");
-    assert_eq!(String::from_utf8(plaintext).unwrap(), answer);
+    assert_eq!(
+        String::from_utf8(plaintext).unwrap(),
+        include_str!("data/7-plaintext.txt")
+    );
 
     return Ok(());
 }

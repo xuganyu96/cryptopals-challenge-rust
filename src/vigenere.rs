@@ -143,8 +143,11 @@ pub fn solve_caesar(ciphertext: &[u8]) -> Vec<(u8, f64)> {
                 Err(_) => return None,
                 Ok(plaintext_str) => plaintext_str,
             };
-            if !plaintext_analysis::eng_char_threshold(&plaintext_str, 0.8) {
-                // NOTE: this felt arbitrary, but it works
+            if !plaintext_analysis::eng_char_threshold(&plaintext_str, 0.8)
+                || plaintext_analysis::contains_invalid_chars(&plaintext_str)
+            {
+                // TODO: the choice of the threshold (and for that matter, the choice of the set of
+                // invalid characters) feels arbitrary; should be more systematic
                 return None;
             }
             let frequencies = plaintext_analysis::char_frequency(&plaintext_str);
