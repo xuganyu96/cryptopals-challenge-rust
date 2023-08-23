@@ -43,45 +43,79 @@ fn problem3() {
     let ciphertext_hex = "1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736";
     let ciphertext = hex::decode(ciphertext_hex).unwrap();
 
-    let keys = vigenere::solve_caesar(&ciphertext);
-    let (key, _) = keys.get(0).unwrap();
-    let plaintext = vigenere::decrypt(&ciphertext, &[*key]);
+    let key = vigenere::solve_with_keysize(&ciphertext, 1).unwrap();
+    let plaintext = vigenere::decrypt(&ciphertext, &key);
     let plaintext_str = String::from_utf8(plaintext).unwrap();
     assert_eq!(plaintext_str, "Cooking MC's like a pound of bacon");
 }
 
 /// Break Fixed-length XOR, part 2
 ///
-/// Similar to problem 3, but with 60 lines of ciphertexts among which one of them is encrypted
-/// with a Caesar cipher. There are some arbitary filtering, but in the end the thing works so I
-/// will move on
+/// For each line, produce the best decryption, then find the best
 #[test]
 fn problem4() {
-    let mut decryptions: Vec<(usize, u8, f64)> = vec![]; // line_no, key, mse
     let ciphertext_str = include_str!("data/4.txt");
-    let ciphertexts = ciphertext_str
+    let plaintext_strs: Vec<String> = ciphertext_str
         .lines()
-        .map(|line| hex::decode(line).unwrap())
-        .collect::<Vec<Vec<u8>>>();
+        .filter_map(|line| {
+            let ciphertext = hex::decode(line).unwrap();
+            let key = vigenere::solve_with_keysize(&ciphertext, 1);
+            let plaintext = match key {
+                Some(key) => vigenere::decrypt(&ciphertext, &key),
+                None => return None,
+            };
+            return match String::from_utf8(plaintext) {
+                Ok(plaintext_str) => Some(plaintext_str),
+                Err(_) => None,
+            };
+        })
+        .collect();
+    // there could be multiple accepted decryptions. We only need to make sure that the correct
+    // decryption is among them
+    assert!(plaintext_strs
+        .iter()
+        .any(|plaintext_str| plaintext_str == "Now that the party is jumping\n"));
+}
 
-    ciphertexts.iter().enumerate().for_each(|(i, ciphertext)| {
-        let keys = vigenere::solve_caesar(&ciphertext);
-        for (key, mse) in keys {
-            decryptions.push((i, key, mse));
-        }
-    });
+/// Implement repeating-key XOR
+#[test]
+fn problem5() {
+    let plaintext = concat!(
+        "Burning 'em, if you ain't quick and nimble\n",
+        "I go crazy when I hear a cymbal"
+    );
+    let key = b"ICE";
+    let ciphertext = vigenere::encrypt(plaintext.as_bytes(), key);
 
-    decryptions.sort_by(|elem1, elem2| {
-        let (_, _, mse1) = elem1;
-        let (_, _, mse2) = elem2;
-        return mse1.partial_cmp(mse2).unwrap();
-    });
+    assert_eq!(
+        hex::encode(ciphertext),
+        concat!(
+            "0b3637272a2b2e63622c2e69692a23693a2a3c6324202d623d63343c2a26226324272765272a282b",
+            "2f20430a652e2c652a3124333a653e2b2027630c692b20283165286326302e27282f"
+        )
+    );
+}
 
-    let (i, key, _) = decryptions.get(0).unwrap();
-    let ciphertext = ciphertexts.get(*i).unwrap();
-    let plaintext = vigenere::decrypt(ciphertext, &[*key]);
+/// Break repeating-key XOR
+#[test]
+fn problem6() {
+    let ciphertext_str = include_str!("data/6.txt");
+    let correct_keysize = 29;
+    let answer_str = include_str!("../tests/data/6-plaintext.txt");
+
+    let ciphertext: Vec<u8> = ciphertext_str
+        .lines()
+        .map(|line| encoding::decode_base64(line).unwrap())
+        .flatten()
+        .collect::<Vec<u8>>();
+    let keysizes = vigenere::find_keysizes(&ciphertext);
+    // Normally the solving process takes a few moments, but in this case I already know the
+    // answer, so the correct keysize is picked to speed up testing
+    assert!(keysizes.contains(&correct_keysize));
+    let key = vigenere::solve_with_keysize(&ciphertext, correct_keysize).unwrap();
+    let plaintext = vigenere::decrypt(&ciphertext, &key);
     let plaintext_str = String::from_utf8(plaintext).unwrap();
-    assert_eq!(plaintext_str, "Now that the party is jumping\n");
+    assert_eq!(plaintext_str, answer_str);
 }
 
 #[test]

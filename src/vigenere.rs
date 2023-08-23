@@ -1,7 +1,6 @@
 //! The Vigenere cipher
 //! Generalized to work with bytes
-use crate::caesar::{self, EnglishFrequency};
-use crate::plaintext_analysis;
+use crate::english;
 use std::error::Error;
 
 fn repeating_key_xor(data: &[u8], key: &[u8]) -> Vec<u8> {
@@ -78,12 +77,8 @@ fn keysize_score(ciphertext: &[u8], keysize: usize) -> Result<f64, Box<dyn Error
     return Ok(avg);
 }
 
-/// Return a list of possible key sizes sorted by their keysize score
-/// Key size with a lower score (a lower hamming distance) will have a higher ranking since it is
-/// the more likely key.
-///
-/// If the ciphertext is too short even for a keysize of 1, the list will be empty
-pub fn rank_keysizes(ciphertext: &[u8]) -> Vec<(usize, f64)> {
+/// Return an ordered list of possible key sizes
+pub fn find_keysizes(ciphertext: &[u8]) -> Vec<usize> {
     let max = ciphertext.len() / 2;
     let mut scores = (1..=max)
         .filter_map(|keysize| match keysize_score(ciphertext, keysize) {
@@ -98,19 +93,28 @@ pub fn rank_keysizes(ciphertext: &[u8]) -> Vec<(usize, f64)> {
         return score1.partial_cmp(score2).unwrap();
     });
 
-    return scores;
+    return scores
+        .into_iter()
+        .map(|(keysize, _score)| keysize)
+        .collect();
 }
 
-/// Return the best key of the input size using the input English letter frequency
-pub fn solve_with_keysize(
-    ciphertext: &[u8],
-    keysize: usize,
-    reference: &EnglishFrequency,
-) -> Vec<u8> {
+/// Return the most probably key with the given keysize. If no such key can be found, return None
+///
+/// The best key is obtained byte by byte. To obtain the partial key at byte k, first obtain the
+/// partial ciphertext by collecting every kth byte of the original ciphertext, then use frequency
+/// analysis
+pub fn solve_with_keysize(ciphertext: &[u8], keysize: usize) -> Option<Vec<u8>> {
     let mut key = vec![0u8; keysize];
+    // TODO: if keysize greater than 1, then the partial ciphertext can follow a looser threshold
+    // since partial plaintext is probably not natural English
+    let mut threshold = 0.8;
+    if keysize > 1 {
+        threshold = 0.5;
+    }
 
     for k in 0..keysize {
-        let partial_ciphertext = ciphertext
+        let partial_ciphertext: Vec<u8> = ciphertext
             .iter()
             .enumerate()
             .filter_map(|(i, byte)| {
@@ -119,23 +123,25 @@ pub fn solve_with_keysize(
                 }
                 return None;
             })
-            .collect::<Vec<u8>>();
-        let best_partial_keys = caesar::n_best_keys(&partial_ciphertext, reference, 1, true);
-        match best_partial_keys.get(0) {
-            Some(best_partial_key) => {
-                let mutref = key.get_mut(k).unwrap();
-                *mutref = *best_partial_key;
-            }
-            _ => (),
+            .collect();
+        let partial_keys = solve_caesar(&partial_ciphertext, threshold);
+        if partial_keys.len() == 0 {
+            return None;
         }
+        let (partial_key, _) = partial_keys.get(0).unwrap();
+        key[k] = *partial_key;
     }
 
-    return key;
+    return Some(key);
 }
 
 /// Solve a Caesar cipher, return the n best keys alongside their scores, where lower numerical
-/// values correspond to a better key
-pub fn solve_caesar(ciphertext: &[u8]) -> Vec<(u8, f64)> {
+/// values correspond to a better key.
+///
+/// Note that this implementation currently filters decryptions based on the percentage of English
+/// charactersand as well as possible invalid characters, so it is possible that the returned
+/// vector is empty.
+fn solve_caesar(ciphertext: &[u8], threshold: f64) -> Vec<(u8, f64)> {
     let mut keys = (0u8..=255u8)
         .filter_map(|key| {
             let plaintext = decrypt(ciphertext, &[key]);
@@ -143,18 +149,14 @@ pub fn solve_caesar(ciphertext: &[u8]) -> Vec<(u8, f64)> {
                 Err(_) => return None,
                 Ok(plaintext_str) => plaintext_str,
             };
-            if !plaintext_analysis::eng_char_threshold(&plaintext_str, 0.8)
-                || plaintext_analysis::contains_invalid_chars(&plaintext_str)
+            if !english::eng_char_threshold(&plaintext_str, threshold)
+                || english::contains_invalid_chars(&plaintext_str)
             {
-                // TODO: the choice of the threshold (and for that matter, the choice of the set of
-                // invalid characters) feels arbitrary; should be more systematic
+                // TODO: the choice of the threshold feels arbitrary; should be more systematic
                 return None;
             }
-            let frequencies = plaintext_analysis::char_frequency(&plaintext_str);
-            let mse = plaintext_analysis::char_mse(
-                &frequencies,
-                &plaintext_analysis::reference_frequencies(),
-            );
+            let frequencies = english::char_frequency(&plaintext_str);
+            let mse = english::char_mse(&frequencies, &english::reference_frequencies());
 
             return Some((key, mse));
         })
