@@ -1,15 +1,26 @@
-My attempts at the Cryptopals Challenges using Rust
+# Set 1
+Problem 1 through 6 all lead to the implementation and breaking of the Vigenere cipher. Although there are two separate single-byte XOR problems (Caesar cipher), they are special cases of repeating-key XOR. As such, a single set of API for the Vigenere cipher is used for all problems.
 
-For problem 7, I am having a hard time getting the openssl command line tool to work. Here are is what I have tried:
+```rust
+fn encrypt(plaintext: &[u8], key: &[u8]) -> Vec<u8>
 
+fn decrypt(ciphertext: &[u8], key: &[u8]) -> Vec<u8>
+
+/// Return an ordered list of possible key sizes, where the value at lower index
+/// is the more likely key size
+fn find_keysize(ciphertext: &[u8]) -> Vec<u8>
+
+/// Return an ordered list of possible keys with the given input key size
+fn solve_with_keysize(ciphertext: &[u8], keysize: usize) -> Vec<Vec<u8>>
 ```
-openssl aes-128-ecb -in inputs/7.txt -out msg.txt -a -d
+
+For problem 7 and 8, we need to implement AES128 in ECB mode. The public API of the `aes128ecb` module is as follows:
+
+```rust
+/// There are some caveats with allowablw ciphertext sizes and key sizes:
+/// ciphertext must be a multiple of 16 bytes, and key size must be exactly 16
+/// bytes
+fn decrypt(ciphertext: &[u8], key: &[u8]) -> Vec<u8>
 ```
 
-# How to run individual programs
-
-1. `cargo run --bin p1`
-1. `cargo run --bin p2`
-1. `cargo run --bin p3 -- ""1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736"`, which should return "Cooking MC's like a pound of bacon"
-1. `cargo run --bin p4 -- inputs/4.txt`  
-which should print the correct result as the top
+Encryption will be omitted for now, knowing that in set 2 we will implement PKCS padding.
