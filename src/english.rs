@@ -35,14 +35,9 @@ const ALPHABETIC_FREQUENCIES: [(char, f64); 26] = [
 /// Some arbitrary set of invalid characters in plaintext
 const INVALID_CHARS: [char; 1] = ['\0'];
 
-/// Return True iff the input bytes form valid UTF-8 strings according to Rust String
-pub fn is_valid_utf8(bytes: &[u8]) -> bool {
-    return String::from_utf8(bytes.to_vec()).is_ok();
-}
-
 /// Return True iff the percentage of English alphabet letter in the input string is at or greater
 /// than the input threshold. If the input string is empty, return True
-pub fn eng_char_threshold(plaintext: &str, threshold: f64) -> bool {
+pub(crate) fn eng_char_threshold(plaintext: &str, threshold: f64) -> bool {
     if plaintext.len() == 0 {
         return true;
     }
@@ -62,7 +57,7 @@ pub fn eng_char_threshold(plaintext: &str, threshold: f64) -> bool {
 }
 
 /// Return True iff input string contains invalid characters, as defined by the constant
-pub fn contains_invalid_chars(plaintext: &str) -> bool {
+pub(crate) fn contains_invalid_chars(plaintext: &str) -> bool {
     return plaintext
         .chars()
         .any(|char_| INVALID_CHARS.contains(&char_));
@@ -71,7 +66,7 @@ pub fn contains_invalid_chars(plaintext: &str) -> bool {
 /// Count the percentage frequency of each unique character in the input string
 /// Note that this counting is case-insensitive. All uppercase letters will be automatically
 /// converted to lowercase
-pub fn char_frequency(plaintext: &str) -> HashMap<char, f64> {
+pub(crate) fn char_frequency(plaintext: &str) -> HashMap<char, f64> {
     let mut frequencies = HashMap::new();
     let nchars = plaintext.chars().count() as f64;
     // count before dividing to prevent underflow
@@ -88,7 +83,7 @@ pub fn char_frequency(plaintext: &str) -> HashMap<char, f64> {
 }
 
 /// Compare frequencies and compute mean-square-error
-pub fn char_mse(lhs: &HashMap<char, f64>, rhs: &HashMap<char, f64>) -> f64 {
+pub(crate) fn char_mse(lhs: &HashMap<char, f64>, rhs: &HashMap<char, f64>) -> f64 {
     let mut unique_keys: HashSet<char> = HashSet::new();
     let mut se_sum = 0.0;
 
@@ -109,7 +104,7 @@ pub fn char_mse(lhs: &HashMap<char, f64>, rhs: &HashMap<char, f64>) -> f64 {
     return se_sum / n_unique_keys;
 }
 
-pub fn reference_frequencies() -> HashMap<char, f64> {
+pub(crate) fn reference_frequencies() -> HashMap<char, f64> {
     let mut frequencies = HashMap::new();
     ALPHABETIC_FREQUENCIES.iter().for_each(|(ptchar, freq)| {
         frequencies.insert(*ptchar, *freq);

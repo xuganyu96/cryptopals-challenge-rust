@@ -4,16 +4,23 @@ This project is organized as a library crate, and individual problems are solved
 ## Problem 1
 Problem 1 is trivial if I don't try to implement the conversion by hand (and in production use I probably will not anyways). However, it is notable that the two crates I used (`hex@0.4.3` and `base64@0.21.2`) have somewhat different APIs, so I implemented a module that provides a consistent API for converting among base64, hex, and bytes:
 
-## Problem 2-6
 ```rust
 pub mod encoding {
+    /// A wrapper for hex::encode
     pub fn encode_hex(bytes: &[u8]) -> String
+
+    /// A wrapper for hex::decode
     pub fn decode_hex(hexstr: &str) -> Result<Vec<u8>, Box<dyn Error>>
+
+    /// A wrapper for the encoding method in base64
     pub fn encode_base64(bytes: &[u8]) -> String
+
+    /// A wrapper for the decoding method in base64
     pub fn decode_base64(b64str: &str) -> Result<Vec<u8>, Box<dyn Error>>
 }
 ```
 
+## Problem 2-6
 Problem 2 through 6 implement and break the classical Caesar cipher (single-byte XOR) and Vigenere cipher (repeating-key XOR). It's worth noting that Caesar cipher is a special case of the Vigenere cipher where the key size is exactly one byte, so in the end we need only one set of API to cover the use case for both ciphers
 
 ```rust
@@ -29,29 +36,5 @@ pub mod vigenere {
 }
 ```
 
-Since the plaintext is English, frequency analysis on the English language is implemented in the `english` module:
-
-```rust
-pub mod english {
-    /// Return True iff the input bytes form valid UTF-8 strings according to Rust String
-    pub fn is_valid_utf8(bytes: &[u8]) -> bool {}
-
-    /// Return True iff the percentage of English alphabet letter in the input string is at or greater
-    /// than the input threshold. If the input string is empty, return True
-    pub fn eng_char_threshold(plaintext: &str, threshold: f64) -> bool {}
-
-    /// Return True iff input string contains invalid characters, as defined by a constant in the module
-    pub fn contains_invalid_chars(plaintext: &str) -> bool {}
-
-    /// Count the percentage frequency of each unique character in the input string
-    /// Note that this counting is case-insensitive. All uppercase letters will be automatically
-    /// converted to lowercase
-    pub fn char_frequency(plaintext: &str) -> HashMap<char, f64> {}
-
-    /// Compare frequencies and compute mean-square-error
-    pub fn char_mse(lhs: &HashMap<char, f64>, rhs: &HashMap<char, f64>) -> f64 {}
-
-    /// Return the frequency mapping, as defined by a constant in the module
-    pub fn reference_frequencies() -> HashMap<char, f64> {}
-}
-```
+## Problem 7-8
+Problem 7-8 introduced the block cipher AES-128 operating in ECB mode. While `aes-128-ecb` is supported by `openssl`, I could not get the decryption in problem 7 to work, so I had to use the `aes@0.8.3` crate.

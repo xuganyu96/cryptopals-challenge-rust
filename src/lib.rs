@@ -1,7 +1,7 @@
 pub mod aes128ecb;
 pub mod caesar;
 pub mod encoding;
-pub mod english;
+pub(crate) mod english;
 pub mod vigenere;
 
 pub mod common {
