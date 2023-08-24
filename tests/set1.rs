@@ -1,6 +1,3 @@
-use base64;
-use base64::{engine::general_purpose, Engine as _};
-use cryptopals::aes128ecb::Aes128Ecb;
 use cryptopals::common;
 use cryptopals::encoding;
 use cryptopals::vigenere;
@@ -119,22 +116,45 @@ fn problem6() {
 }
 
 #[test]
-fn problem7() -> common::Result<()> {
-    let mut ciphertext: Vec<u8> = vec![];
+fn problem7() {
+    use aes::cipher::{generic_array::GenericArray, BlockDecrypt, KeyInit};
+    use aes::Aes128;
 
-    include_str!("data/7.txt").lines().for_each(|line| {
-        let mut ciphertext_block = general_purpose::STANDARD.decode(line).unwrap();
-        ciphertext.append(&mut ciphertext_block);
-    });
+    let blocksize: usize = 16;
+    let ciphertext_str = include_str!("./data/7.txt");
+    let answer_str = include_str!("./data/7-plaintext.txt");
+    let ciphertext: Vec<u8> = ciphertext_str
+        .lines()
+        .map(|line| encoding::decode_base64(line).unwrap())
+        .flatten()
+        .collect();
+    let mut plaintext: Vec<u8> = vec![];
 
-    let mut cipher = Aes128Ecb::from_key("YELLOW SUBMARINE".as_bytes())?;
-    let plaintext = cipher.decrypt(&ciphertext)?;
-    assert_eq!(
-        String::from_utf8(plaintext).unwrap(),
-        include_str!("data/7-plaintext.txt")
-    );
+    // build the cipher
+    let cipher = Aes128::new_from_slice(b"YELLOW SUBMARINE").unwrap();
 
-    return Ok(());
+    // Decrypt the ciphertext block by block
+    let nblocks = ciphertext.len() / blocksize;
+    for i in 0..nblocks {
+        let mut block: [u8; 16] = [0u8; 16];
+        let block_start = i * blocksize;
+        let block_end = (i + 1) * blocksize;
+        block.copy_from_slice(&ciphertext[block_start..block_end]);
+        let mut block = GenericArray::from(block);
+        cipher.decrypt_block(&mut block);
+        let plaintext_block = block.to_vec();
+
+        // Remove padding from the plaintext block if it is the last block
+        if i == (nblocks - 1) {
+            let pad = plaintext_block.get(plaintext_block.len() - 1).unwrap();
+            let pad: usize = (*pad) as usize; // the last "pad" number of bytes are pad
+            let end = plaintext_block.len() - pad;
+            plaintext.extend_from_slice(plaintext_block.get(0..end).unwrap());
+        } else {
+            plaintext.extend_from_slice(&plaintext_block);
+        }
+    }
+    assert_eq!(String::from_utf8(plaintext).unwrap(), answer_str,);
 }
 
 /// https://cryptopals.com/sets/1/challenges/8

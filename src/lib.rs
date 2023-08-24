@@ -1,4 +1,3 @@
-pub mod aes128ecb;
 pub mod caesar;
 pub mod encoding;
 pub(crate) mod english;

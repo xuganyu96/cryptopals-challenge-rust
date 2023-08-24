@@ -8,5 +8,4 @@ edition = "2021"
 [dependencies]
 aes = "0.8.3"
 base64 = "0.21.2"
-clap = { version = "4.3.19", features = ["derive"] }
 hex = "0.4.3"
