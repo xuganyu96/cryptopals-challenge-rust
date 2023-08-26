@@ -1,6 +1,7 @@
 use cryptopals::common;
 use cryptopals::encoding;
 use cryptopals::vigenere;
+use std::collections::HashMap;
 
 /// Convert the hex encoding to base64 encoding
 #[test]
@@ -160,7 +161,7 @@ fn problem7() {
 /// https://cryptopals.com/sets/1/challenges/8
 /// One of the hex-encoded ciphertexts is encoded with AES in ECB mode, detect it.
 #[test]
-fn problem8() -> common::Result<()> {
+fn problem8() {
     let ciphertexts = include_str!("data/8.txt");
 
     let ciphertexts_scores = ciphertexts
@@ -168,7 +169,19 @@ fn problem8() -> common::Result<()> {
         .enumerate()
         .filter_map(|(i, ciphertext_hex)| {
             let ciphertext = hex::decode(ciphertext_hex).unwrap();
-            let counts = common::count_block_frequency(&ciphertext, 16).unwrap();
+            let blocksize: usize = 16;
+
+            // Count the number of repeating blocks
+            let mut counts = HashMap::new();
+            let mut j = 0;
+            while (j + 1) * blocksize <= ciphertext.len() {
+                let block_start = j * blocksize;
+                let block_end = (j + 1) * blocksize;
+                let block = ciphertext.get(block_start..block_end).unwrap().to_vec();
+                let count = counts.get(&block).unwrap_or(&0);
+                counts.insert(block, count + 1);
+                j += 1;
+            }
 
             // We score by counting the number of repeated blocks, in other words, sum of all
             // values minus the number of keys
@@ -182,6 +195,4 @@ fn problem8() -> common::Result<()> {
         })
         .collect::<Vec<(usize, usize)>>();
     assert_eq!(ciphertexts_scores.len(), 1);
-
-    return Ok(());
 }
