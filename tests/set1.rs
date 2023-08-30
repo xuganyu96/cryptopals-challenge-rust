@@ -1,4 +1,3 @@
-use cryptopals::common;
 use cryptopals::encoding;
 use cryptopals::vigenere;
 use std::collections::HashMap;
