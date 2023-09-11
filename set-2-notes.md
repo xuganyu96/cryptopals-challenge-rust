@@ -33,8 +33,11 @@ pub trait BlockCipher {
     /// generate
     fn generate_iv(&self) -> Vec<u8> {}
 
+    /// Encrypt the input plaintext using the given block cipher in ECB mode
     pub fn ecb_encrypt_from_slice(&mut self, plaintext: &[u8]) -> Vec<u8> {}
 
+    /// Decrypt the input ciphertext, assuming that the input ciphertext is
+    /// encrypted under ECB mode. If decryption fails, return error.
     pub fn ecb_decrypt_from_slice(
         &mut self,
         ciphertext: &[u8]
