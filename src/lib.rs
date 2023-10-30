@@ -1,5 +1,6 @@
 pub mod block;
 pub mod caesar;
+pub mod dh;
 pub mod encoding;
 pub(crate) mod english;
 pub mod vigenere;
