@@ -5,11 +5,14 @@ use crypto_bigint::{
 };
 use crypto_primes as primes;
 
+pub mod stream;
+
 /// The parameters of a Diffie-Hellman key exchange include three elements:
 /// A cyclic group G with a prime order p, and a generator element of the group
 /// If we take G to be integer mod p, then any number greater than 1 can be
 /// used as the base "g"
-#[allow(dead_code)]
+///
+/// TODO: Need to implement serialization and deserialization
 #[derive(Debug, Clone)]
 pub struct DHParams<const LIMBSIZE: usize> {
     /// The order of the group, a prime number
@@ -34,6 +37,14 @@ impl<const LIMBSIZE: usize> DHParams<LIMBSIZE> {
         let g = NonZero::new(Uint::<{ LIMBSIZE }>::from_u8(2)).unwrap();
         return Self::new(p, g);
     }
+
+    pub fn get_prime(&self) -> NonZero<Uint<{ LIMBSIZE }>> {
+        return self.p;
+    }
+
+    pub fn get_base(&self) -> NonZero<Uint<{ LIMBSIZE }>> {
+        return self.g;
+    }
 }
 
 type PublicKey<const LIMBSIZE: usize> = NonZero<Uint<LIMBSIZE>>;
@@ -41,7 +52,8 @@ type SecretKey<const LIMBSIZE: usize> = NonZero<Uint<LIMBSIZE>>;
 
 /// A single person's key pair consists of a public key and a private key
 /// The private key is a random positive integer; the public key is the generator
-#[allow(dead_code)]
+///
+/// TODO: Need to implement serialization and deserialization
 #[derive(Debug)]
 pub struct KeyPair<const LIMBSIZE: usize> {
     pk: PublicKey<LIMBSIZE>,
@@ -55,6 +67,14 @@ impl<const LIMBSIZE: usize> KeyPair<LIMBSIZE> {
     /// Return a read-only reference to the public key
     pub fn get_pk(&self) -> &PublicKey<LIMBSIZE> {
         return &self.pk;
+    }
+
+    pub fn get_sk(&self) -> &SecretKey<LIMBSIZE> {
+        return &self.sk;
+    }
+
+    pub fn get_params(&self) -> &DHParams<LIMBSIZE> {
+        return &self.params;
     }
 
     /// Generate the secret exponent, then compute the public element
