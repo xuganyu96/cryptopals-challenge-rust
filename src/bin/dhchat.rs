@@ -1,20 +1,21 @@
 //! DH Chat
-use std::net::{TcpStream, TcpListener};
-use std::io::{Write, Read};
 use clap::{Parser, Subcommand};
-use cryptopals::dh::{MODULUS_SIZE, SECRET_KEY_SIZE, DHParams, KeyPair, PublicKey};
+use cryptopals::dh::{DHParams, KeyPair, PublicKey, SECRET_KEY_SIZE};
+use std::io::{Read, Write};
+use std::net::{TcpListener, TcpStream};
 
 const DEFAULT_PORT: u16 = 8888;
 
+/// An E2E encrypted chat
 #[derive(Debug, Parser)]
 struct Args {
-
     #[command(subcommand)]
     command: Commands,
 }
 
 #[derive(Debug, Subcommand)]
 enum Commands {
+    /// Connect to a running instance of a server
     Client {
         /// The host to connect to; defaults to "127.0.0.1"
         #[arg(long)]
@@ -24,6 +25,8 @@ enum Commands {
         #[arg(short, long)]
         port: Option<u16>,
     },
+
+    /// Start an instance of the server
     Server {
         /// The port to listen-in on
         #[arg(short, long)]
@@ -32,7 +35,7 @@ enum Commands {
 }
 
 fn client_main(host: &str, port: u16) {
-    let params = DHParams::pgen(MODULUS_SIZE);
+    let params = DHParams::pgen();
     let keypair = KeyPair::keygen(&params, SECRET_KEY_SIZE);
     println!("Generated key pair");
 
@@ -47,7 +50,7 @@ fn client_main(host: &str, port: u16) {
     let mut server_pkbytes = [0u8; PublicKey::BYTES];
     stream.read_exact(&mut server_pkbytes).unwrap();
     let server_pk = PublicKey::from_be_bytes(server_pkbytes);
-    let shared_secret = keypair.get_shared_secret(&server_pk);
+    let shared_secret = keypair.get_shared_secret(&server_pk).unwrap();
 
     dbg!(shared_secret);
 }
@@ -65,21 +68,23 @@ fn server_main(port: u16) {
 
     let client_pk = PublicKey::from_be_bytes(pkbytes);
     let server_keypair = KeyPair::keygen(&client_pk.get_params(), SECRET_KEY_SIZE);
-    let shared_secret = server_keypair.get_shared_secret(&client_pk);
+    let shared_secret = server_keypair.get_shared_secret(&client_pk).unwrap();
     dbg!(shared_secret);
 
-    stream.write(&server_keypair.get_pk().to_be_bytes()).unwrap();
+    stream
+        .write(&server_keypair.get_pk().to_be_bytes())
+        .unwrap();
 }
 
 fn main() {
     let args = Args::parse();
     match args.command {
-        Commands::Client{ host, port } => {
+        Commands::Client { host, port } => {
             let host = host.unwrap_or("127.0.0.1".to_string());
             let port = port.unwrap_or(DEFAULT_PORT);
             client_main(&host, port)
-        },
-        Commands::Server{ port } => {
+        }
+        Commands::Server { port } => {
             let port = port.unwrap_or(DEFAULT_PORT);
             server_main(port);
         }
