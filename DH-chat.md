@@ -9,3 +9,32 @@ There needs to be a procedure for establishing the connection, I propose to go a
 1. Client and server each computes the shared secret, derives the AES-128 key, then start communicating
 
 Using `crypto-bigint` it is fairly straightforward to implement the [math](./src/dh.rs). It remains to implement the handshake protocol
+
+```rust
+struct DHChatStream {
+    keypair: KeyPair,
+    stream: TcpStream,
+}
+
+impl DHChatStream {
+    /// Used by the client to initiate a DHChat connection. If a connection
+    /// is established, return Ok(); else return the appropriate error
+    fn initiate_handshake(tcpstream: TcpStream) -> Result<Self, ...> {
+        let params = ...;
+        let keypairs = ...;
+        
+        tcpstream.write(&keypairs.serialize());
+        let peer_pk = KeyPair::deserialize(tcpstream.read());
+        let secret = keypair.get_shared_secret(&peer_pk);
+
+        // Instantiate the AES cipher
+
+        return Ok(Self { ... });
+    }
+}
+
+fn client() {
+    let stream = TcpStream::connect("address").unwrap();
+    let stream = DHChatStream::new(stream);
+}
+```

@@ -1,11 +1,15 @@
 //! Diffie-Hellman key exchange
+use std::error::Error;
 use crypto_bigint::{
+    Encoding,
     modular::runtime_mod::{DynResidue, DynResidueParams},
-    NonZero, Uint,
+    NonZero, Uint, 
 };
 use crypto_primes as primes;
 
 pub mod stream;
+
+type Result<T> = core::result::Result<T, Box<dyn Error>>;
 
 /// The parameters of a Diffie-Hellman key exchange include three elements:
 /// A cyclic group G with a prime order p, and a generator element of the group
@@ -13,7 +17,7 @@ pub mod stream;
 /// used as the base "g"
 ///
 /// TODO: Need to implement serialization and deserialization
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub struct DHParams<const LIMBS: usize> {
     /// The order of the group, a prime number
     p: NonZero<Uint<LIMBS>>,
@@ -54,7 +58,7 @@ type SecretKey<const LIMBS: usize> = NonZero<Uint<LIMBS>>;
 /// The private key is a random positive integer; the public key is the generator
 ///
 /// TODO: Need to implement serialization and deserialization
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub struct KeyPair<const LIMBS: usize> {
     pk: PublicKey<LIMBS>,
 
@@ -97,6 +101,52 @@ impl<const LIMBS: usize> KeyPair<LIMBS> {
         let secret = DynResidue::new(other, modulo).pow(&self.sk).retrieve();
         return NonZero::new(secret).unwrap();
     }
+
+    /// Serialize to bytes. The size of each element is known at compile time: pk and sk each takes
+    /// 8 * LIMBS bytes; params contains two fields, each being 8 * LIMBS bytes.
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut bytes = vec![];
+
+        self.pk.to_limbs().iter()
+            .for_each(|limb| {
+                bytes.extend_from_slice(&limb.to_be_bytes());
+            });
+        self.sk.to_limbs().iter()
+            .for_each(|limb| {
+                bytes.extend_from_slice(&limb.to_be_bytes());
+            });
+        self.params.get_prime().to_limbs().iter()
+            .for_each(|limb| {
+                bytes.extend_from_slice(&limb.to_be_bytes());
+            });
+        self.params.get_base().to_limbs().iter()
+            .for_each(|limb| {
+                bytes.extend_from_slice(&limb.to_be_bytes());
+            });
+        
+        return bytes;
+    }
+
+    /// Deserialize from bytes. The size of each element is exactly (8 * LIMBS) bytes.
+    #[allow(unused_variables)]
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
+        if bytes.len() != (4 * 8 * LIMBS) {
+            return Err("Incorrect length".into());
+        }
+        let pkbytes = bytes.get(0..(8 * LIMBS)).unwrap();
+        let skbytes = bytes.get((8 * LIMBS)..(16 * LIMBS)).unwrap();
+        let primebytes = bytes.get((16 * LIMBS)..(24 * LIMBS)).unwrap();
+        let basebytes = bytes.get((24 * LIMBS)..(32 * LIMBS)).unwrap();
+
+        let pk = NonZero::new(Uint::<LIMBS>::from_be_slice(&pkbytes)).unwrap();
+        let sk = NonZero::new(Uint::<LIMBS>::from_be_slice(&skbytes)).unwrap();
+        let prime = NonZero::new(Uint::<LIMBS>::from_be_slice(&primebytes)).unwrap();
+        let base = NonZero::new(Uint::<LIMBS>::from_be_slice(&basebytes)).unwrap();
+
+        return Ok(Self {
+            pk, sk, params: DHParams{ p: prime, g: base }
+        });
+    }
 }
 
 
@@ -118,5 +168,14 @@ mod tests {
         let bob_secret: NonZero<Uint<LIMBS>> = bob_keypair.get_shared_secret(alice_keypair.get_pk());
 
         assert_eq!(alice_secret, bob_secret);
+    }
+
+    #[test]
+    fn test_serde() {
+        let params: DHParams<LIMBS> = DHParams::pgen(2048);
+        let keypair: KeyPair<LIMBS> = KeyPair::keygen(&params, 256);
+        
+        let serial = keypair.to_bytes();
+        assert_eq!(KeyPair::<LIMBS>::from_bytes(&serial).unwrap(), keypair);
     }
 }
