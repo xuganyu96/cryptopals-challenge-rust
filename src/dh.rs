@@ -1,34 +1,35 @@
 //! Diffie-Hellman key exchange
-use std::error::Error;
 use crypto_bigint::{
-    Encoding,
     modular::runtime_mod::{DynResidue, DynResidueParams},
-    NonZero, Uint, 
+    Encoding, NonZero, U2048,
 };
 use crypto_primes as primes;
-
-pub mod stream;
+use std::error::Error;
 
 type Result<T> = core::result::Result<T, Box<dyn Error>>;
+
+/// Recommended num of bits for modulus
+pub const MODULUS_SIZE: usize = 2048usize;
+
+/// Recommended num of bits for secret key
+pub const SECRET_KEY_SIZE: usize = 256usize;
 
 /// The parameters of a Diffie-Hellman key exchange include three elements:
 /// A cyclic group G with a prime order p, and a generator element of the group
 /// If we take G to be integer mod p, then any number greater than 1 can be
 /// used as the base "g"
-///
-/// TODO: Need to implement serialization and deserialization
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
-pub struct DHParams<const LIMBS: usize> {
+pub struct DHParams {
     /// The order of the group, a prime number
-    p: NonZero<Uint<LIMBS>>,
+    p: NonZero<U2048>,
 
     /// The base element
-    g: NonZero<Uint<LIMBS>>,
+    g: NonZero<U2048>,
 }
 
-impl<const LIMBS: usize> DHParams<LIMBS> {
+impl DHParams {
     /// Given the ambient prime and the base, return self
-    pub fn new(p: NonZero<Uint<{ LIMBS }>>, g: NonZero<Uint<{ LIMBS }>>) -> Self {
+    pub fn new(p: NonZero<U2048>, g: NonZero<U2048>) -> Self {
         return Self { p, g };
     }
 
@@ -36,146 +37,157 @@ impl<const LIMBS: usize> DHParams<LIMBS> {
     ///
     /// lambda is the bit-length of the ambient prime
     pub fn pgen(lambda: usize) -> Self {
-        let p: Uint<{ LIMBS }> = primes::generate_prime(Some(lambda));
+        let p: U2048 = primes::generate_safe_prime(Some(lambda));
         let p = NonZero::new(p).unwrap(); // generate_prime is guaranteed
-        let g = NonZero::new(Uint::<{ LIMBS }>::from_u8(2)).unwrap();
+        let g = NonZero::new(U2048::from_u8(2)).unwrap();
         return Self::new(p, g);
     }
 
-    pub fn get_prime(&self) -> NonZero<Uint<{ LIMBS }>> {
+    pub fn get_prime(&self) -> NonZero<U2048> {
         return self.p;
     }
 
-    pub fn get_base(&self) -> NonZero<Uint<{ LIMBS }>> {
+    pub fn get_base(&self) -> NonZero<U2048> {
         return self.g;
     }
 }
 
-type PublicKey<const LIMBS: usize> = NonZero<Uint<LIMBS>>;
-type SecretKey<const LIMBS: usize> = NonZero<Uint<LIMBS>>;
+/// The public key includes both the public exponent and the parameters
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub struct PublicKey(NonZero<U2048>, DHParams);
+
+impl PublicKey {
+    pub const BYTES: usize = U2048::BYTES * 3;
+
+    pub fn get_public_exp(&self) -> NonZero<U2048> {
+        return self.0;
+    }
+
+    pub fn get_params(&self) -> DHParams {
+        return self.1;
+    }
+
+    pub fn get_prime(&self) -> NonZero<U2048> {
+        return self.1.p;
+    }
+
+    pub fn get_base(&self) -> NonZero<U2048> {
+        return self.1.g;
+    }
+
+    pub fn to_be_bytes(&self) -> [u8; Self::BYTES] {
+        let mut bytes = [0u8; U2048::BYTES * 3];
+
+        bytes
+            .get_mut(0..U2048::BYTES)
+            .unwrap()
+            .copy_from_slice(&self.get_public_exp().to_be_bytes());
+        bytes
+            .get_mut(U2048::BYTES..(2 * U2048::BYTES))
+            .unwrap()
+            .copy_from_slice(&self.get_prime().to_be_bytes());
+        bytes
+            .get_mut((2 * U2048::BYTES)..(3 * U2048::BYTES))
+            .unwrap()
+            .copy_from_slice(&self.get_base().to_be_bytes());
+
+        return bytes;
+    }
+
+    pub fn from_be_bytes(bytes: [u8; Self::BYTES]) -> Self {
+        let public_exp = U2048::from_be_slice(bytes.get(0..U2048::BYTES).unwrap());
+        let prime = U2048::from_be_slice(bytes.get(U2048::BYTES..(2 * U2048::BYTES)).unwrap());
+        let base = U2048::from_be_slice(bytes.get((2 * U2048::BYTES)..(3 * U2048::BYTES)).unwrap());
+        let params = DHParams::new(
+            NonZero::new(prime).unwrap(), 
+            NonZero::new(base).unwrap(),
+        );
+        return Self(NonZero::new(public_exp).unwrap(), params);
+    }
+
+    pub fn from_be_slice(slice: &[u8]) -> Result<Self> {
+        if slice.len() != U2048::BYTES * 3 {
+            return Err("Invalid length".into());
+        }
+        let mut bytes = [0u8; U2048::BYTES * 3];
+        bytes.clone_from_slice(slice);
+        return Ok(Self::from_be_bytes(bytes));
+    }
+}
+
+/// The secret key is exactly a secret exponent
+type SecretKey = NonZero<U2048>;
 
 /// A single person's key pair consists of a public key and a private key
 /// The private key is a random positive integer; the public key is the generator
 ///
 /// TODO: Need to implement serialization and deserialization
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
-pub struct KeyPair<const LIMBS: usize> {
-    pk: PublicKey<LIMBS>,
+pub struct KeyPair {
+    pk: PublicKey,
 
-    sk: SecretKey<LIMBS>,
-
-    params: DHParams<LIMBS>,
+    sk: SecretKey,
 }
 
-impl<const LIMBS: usize> KeyPair<LIMBS> {
+impl KeyPair {
     /// Return a read-only reference to the public key
-    pub fn get_pk(&self) -> &PublicKey<LIMBS> {
+    pub fn get_pk(&self) -> &PublicKey {
         return &self.pk;
     }
 
-    pub fn get_sk(&self) -> &SecretKey<LIMBS> {
+    /// Return a read-only reference to the secret exponent
+    pub fn get_sk(&self) -> &SecretKey {
         return &self.sk;
     }
 
-    pub fn get_params(&self) -> &DHParams<LIMBS> {
-        return &self.params;
-    }
-
     /// Generate the secret exponent, then compute the public element
-    pub fn keygen(params: &DHParams<LIMBS>, lambda: usize) -> Self {
-        let sk: SecretKey<LIMBS> = NonZero::new(primes::generate_prime(Some(lambda))).unwrap();
+    pub fn keygen(params: &DHParams, lambda: usize) -> Self {
+        let sk: SecretKey = NonZero::new(primes::generate_prime(Some(lambda))).unwrap();
 
         let modulo = DynResidueParams::new(&params.p);
-        let pk = DynResidue::new(&params.g, modulo).pow(&sk).retrieve();
-        let pk = NonZero::new(pk).unwrap();
+        let pub_exp = DynResidue::new(&params.g, modulo).pow(&sk).retrieve();
+        let pub_exp = NonZero::new(pub_exp).unwrap();
         return Self {
-            pk,
+            pk: PublicKey(pub_exp, params.clone()),
             sk,
-            params: params.clone(),
         };
     }
 
     /// Compute the shared secret from the other person's public key
-    pub fn get_shared_secret(&self, other: &PublicKey<LIMBS>) -> NonZero<Uint<LIMBS>> {
-        let modulo = DynResidueParams::new(&self.params.p);
-        let secret = DynResidue::new(other, modulo).pow(&self.sk).retrieve();
+    pub fn get_shared_secret(&self, other: &PublicKey) -> NonZero<U2048> {
+        let modulo = DynResidueParams::new(&self.pk.get_prime());
+        let secret = DynResidue::new(&other.get_public_exp(), modulo)
+            .pow(&self.sk)
+            .retrieve();
         return NonZero::new(secret).unwrap();
     }
-
-    /// Serialize to bytes. The size of each element is known at compile time: pk and sk each takes
-    /// 8 * LIMBS bytes; params contains two fields, each being 8 * LIMBS bytes.
-    pub fn to_bytes(&self) -> Vec<u8> {
-        let mut bytes = vec![];
-
-        self.pk.to_limbs().iter()
-            .for_each(|limb| {
-                bytes.extend_from_slice(&limb.to_be_bytes());
-            });
-        self.sk.to_limbs().iter()
-            .for_each(|limb| {
-                bytes.extend_from_slice(&limb.to_be_bytes());
-            });
-        self.params.get_prime().to_limbs().iter()
-            .for_each(|limb| {
-                bytes.extend_from_slice(&limb.to_be_bytes());
-            });
-        self.params.get_base().to_limbs().iter()
-            .for_each(|limb| {
-                bytes.extend_from_slice(&limb.to_be_bytes());
-            });
-        
-        return bytes;
-    }
-
-    /// Deserialize from bytes. The size of each element is exactly (8 * LIMBS) bytes.
-    #[allow(unused_variables)]
-    pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
-        if bytes.len() != (4 * 8 * LIMBS) {
-            return Err("Incorrect length".into());
-        }
-        let pkbytes = bytes.get(0..(8 * LIMBS)).unwrap();
-        let skbytes = bytes.get((8 * LIMBS)..(16 * LIMBS)).unwrap();
-        let primebytes = bytes.get((16 * LIMBS)..(24 * LIMBS)).unwrap();
-        let basebytes = bytes.get((24 * LIMBS)..(32 * LIMBS)).unwrap();
-
-        let pk = NonZero::new(Uint::<LIMBS>::from_be_slice(&pkbytes)).unwrap();
-        let sk = NonZero::new(Uint::<LIMBS>::from_be_slice(&skbytes)).unwrap();
-        let prime = NonZero::new(Uint::<LIMBS>::from_be_slice(&primebytes)).unwrap();
-        let base = NonZero::new(Uint::<LIMBS>::from_be_slice(&basebytes)).unwrap();
-
-        return Ok(Self {
-            pk, sk, params: DHParams{ p: prime, g: base }
-        });
-    }
 }
-
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    const LIMBS: usize = 32;
-
     #[test]
     fn test_correctness() {
         // RFC3526 requires ambient prime to be 2048 bits (256 bytes)
-        let params: DHParams<LIMBS> = DHParams::pgen(2048);
+        let params: DHParams = DHParams::pgen(MODULUS_SIZE);
 
-        let alice_keypair: KeyPair<LIMBS> = KeyPair::keygen(&params, 256);
-        let bob_keypair: KeyPair<LIMBS> = KeyPair::keygen(&params, 256);
+        let alice_keypair: KeyPair = KeyPair::keygen(&params, SECRET_KEY_SIZE);
+        let bob_keypair: KeyPair = KeyPair::keygen(&params, SECRET_KEY_SIZE);
 
-        let alice_secret: NonZero<Uint<LIMBS>> = alice_keypair.get_shared_secret(bob_keypair.get_pk());
-        let bob_secret: NonZero<Uint<LIMBS>> = bob_keypair.get_shared_secret(alice_keypair.get_pk());
+        let alice_secret: NonZero<U2048> = alice_keypair.get_shared_secret(bob_keypair.get_pk());
+        let bob_secret: NonZero<U2048> = bob_keypair.get_shared_secret(alice_keypair.get_pk());
 
         assert_eq!(alice_secret, bob_secret);
     }
 
     #[test]
     fn test_serde() {
-        let params: DHParams<LIMBS> = DHParams::pgen(2048);
-        let keypair: KeyPair<LIMBS> = KeyPair::keygen(&params, 256);
-        
-        let serial = keypair.to_bytes();
-        assert_eq!(KeyPair::<LIMBS>::from_bytes(&serial).unwrap(), keypair);
+        let params: DHParams = DHParams::pgen(MODULUS_SIZE);
+        let keypair: KeyPair = KeyPair::keygen(&params, SECRET_KEY_SIZE);
+
+        let public_transmit = keypair.get_pk().to_be_bytes();
+
+        assert_eq!(PublicKey::from_be_bytes(public_transmit), *keypair.get_pk());
     }
 }
