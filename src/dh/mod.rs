@@ -173,6 +173,22 @@ impl KeyPair {
         };
     }
 
+    /// A safer keygen that does not panic?
+    pub fn try_keygen(params: &DHParams, lambda: usize) -> Result<Self> {
+        let sk: SecretKey = NonZero::new(primes::generate_prime(Some(lambda))).unwrap();
+
+        let modulo = DynResidueParams::new(&params.p);
+        let pub_exp = DynResidue::new(&params.g, modulo).pow(&sk).retrieve();
+        if pub_exp == U2048::ZERO {
+            return Err("Bad parameters".into());
+        }
+        let pub_exp = NonZero::new(pub_exp).unwrap();
+        return Ok(Self {
+            pk: PublicKey(pub_exp, params.clone()),
+            sk,
+        });
+    }
+
     /// Compute the shared secret from the other person's public key
     pub fn get_shared_secret(&self, other: &PublicKey) -> Result<NonZero<U2048>> {
         let modulo = DynResidueParams::new(&self.pk.get_prime());

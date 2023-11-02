@@ -1,12 +1,11 @@
-use std::error::Error;
 use crate::dh::{DHParams, KeyPair, PublicKey, SECRET_KEY_SIZE};
-use std::net::{TcpListener, TcpStream, ToSocketAddrs};
+use std::error::Error;
 use std::io::{Read, Write};
+use std::net::{TcpListener, TcpStream, ToSocketAddrs};
 
 /// Similar to TcpStream, but with the added steps of negotiating secret key using Diffie-Hellman
 /// (2048 bits) and encrypting the communicated bytes using AES128-CBC
-pub struct DHStream {
-}
+pub struct DHStream {}
 
 impl DHStream {
     /// Connect to a server, negotiate the parameters, initialize the cipher. If all these steps
@@ -57,4 +56,3 @@ pub fn server_main(port: u16) {
     let addr = format!("127.0.0.1:{port}");
     DHStream::bind(&addr).unwrap();
 }
-
