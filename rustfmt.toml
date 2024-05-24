@@ -1,4 +1,0 @@
-max_width = 99
-newline_style = "Unix"
-reorder_imports = true
-use_field_init_shorthand = true
